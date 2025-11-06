@@ -1,0 +1,94 @@
+trigger: none
+
+schedules:
+  - cron: "0 2 * * 1"   # Every Monday 2 AM UTC (adjust below)
+    displayName: "Weekly Scheduled DAST Scans"
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  CX_APIKEY: $(CX_APIKEY)             # Add this as a secret in Azure DevOps
+  ENVIRONMENT_ID: "88bfd359-c828-49d5-8279-53e612de3de6"  # Replace with yours
+  BASE_URL: "https://us.ast.checkmarx.net"
+  OUTPUT_DIR: "$(Build.SourcesDirectory)/output"
+
+stages:
+  - stage: RunDAST
+    displayName: "Parallel Checkmarx DAST Scans"
+    jobs:
+      - job: GenerateMatrix
+        displayName: "Generate URL Scan Matrix"
+        steps:
+          - script: |
+              echo "Creating JSON matrix from urls.csv"
+              python3 - <<'EOF'
+              import csv, json
+              data = []
+              with open("urls.csv") as f:
+                  reader = csv.DictReader(f, fieldnames=["name","url","tags"])
+                  for row in reader:
+                      if not row["name"].startswith("#") and row["name"].strip():
+                          data.append(row)
+              chunked = [data[i:i+5] for i in range(0, len(data), 5)]  # groups of 5
+              with open("matrix.json","w") as f:
+                  json.dump(chunked, f)
+              EOF
+            displayName: "Prepare Matrix JSON"
+
+          - publish: matrix.json
+            artifact: matrix
+
+      - job: RunScans
+        dependsOn: GenerateMatrix
+        strategy:
+          parallel: 5
+        displayName: "Run DAST Scan Batch"
+        steps:
+          - download: current
+            artifact: matrix
+          - script: |
+              mkdir -p $(OUTPUT_DIR)
+              chmod 777 $(OUTPUT_DIR)
+
+              batch_index=$(( $(System.JobPositionInPhase) - 1 ))
+              echo "Running batch index: $batch_index"
+
+              python3 - <<'EOF'
+              import json, os, subprocess
+              with open("matrix/matrix.json") as f:
+                  batches = json.load(f)
+              index = int(os.environ["batch_index"])
+              if index >= len(batches):
+                  print("No more batches to process")
+                  exit(0)
+
+              batch = batches[index]
+              for site in batch:
+                  name, url, tags = site["name"], site["url"], site["tags"]
+                  print(f"==> Scanning {name} ({url}) with tags [{tags}]")
+                  cmd = [
+                      "docker", "run", "--pull=always",
+                      "-e", f"CX_APIKEY={os.environ['CX_APIKEY']}",
+                      "checkmarx/dast:latest",
+                      "scan",
+                      "--environment-id", os.environ["ENVIRONMENT_ID"],
+                      "--base-url", os.environ["BASE_URL"],
+                      "--project-name", name,
+                      "--target-url", url,
+                      "--tags", tags,
+                      "--output", f"/tmp/{name}_report.json"
+                  ]
+                  subprocess.run(cmd, check=False)
+              EOF
+            displayName: "Run Parallel DAST Scans for Each Batch"
+
+          - task: PublishPipelineArtifact@1
+            displayName: "Publish Batch Reports"
+            inputs:
+              targetPath: "$(OUTPUT_DIR)"
+              artifact: "DAST-Reports"
