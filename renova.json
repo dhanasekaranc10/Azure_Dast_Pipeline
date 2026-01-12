@@ -3,6 +3,9 @@
   "requireConfig": false,
   "prHourlyLimit": 2,
 
+  "dependencyDashboard": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+
   "osvVulnerabilityAlerts": true,
 
   "vulnerabilityAlerts": {
@@ -18,9 +21,8 @@
       "enabled": false
     },
     {
-      "description": "Allow only HIGH & CRITICAL vulnerability fixes",
+      "description": "Allow all security vulnerability fixes (TEMPORARY)",
       "matchUpdateTypes": ["security"],
-      "matchVulnerabilitySeverity": ["high", "critical"],
       "enabled": true,
       "labels": ["security"]
     }
