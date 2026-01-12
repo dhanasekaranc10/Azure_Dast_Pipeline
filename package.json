@@ -1,0 +1,11 @@
+{
+  "name": "cve-2025-55182-test",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "react-server-dom-webpack": "19.0.0",
+    "react-server-dom-parcel": "19.1.0",
+    "react-server-dom-turbopack": "19.2.0"
+    
+  }
+}
