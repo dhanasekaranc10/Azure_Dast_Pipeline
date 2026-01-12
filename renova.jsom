@@ -1,0 +1,28 @@
+{
+  "onboarding": false,
+  "requireConfig": false,
+  "prHourlyLimit": 2,
+
+  "osvVulnerabilityAlerts": true,
+
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "vulnerabilityFixStrategy": "highest"
+  },
+
+  "packageRules": [
+    {
+      "description": "Disable all non-security updates",
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false
+    },
+    {
+      "description": "Allow only HIGH & CRITICAL vulnerability fixes",
+      "matchUpdateTypes": ["security"],
+      "matchVulnerabilitySeverity": ["high", "critical"],
+      "enabled": true,
+      "labels": ["security"]
+    }
+  ]
+}
