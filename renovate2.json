@@ -1,0 +1,49 @@
+{
+  "onboarding": false,
+  "requireConfig": false,
+  "prHourlyLimit": 20,
+  "logLevel": "debug",
+
+  "dependencyDashboard": true,
+  "dependencyDashboardOSVVulnerabilitySummary": "all",
+
+  "osvVulnerabilityAlerts": true,
+
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "vulnerabilityFixStrategy": "highest"
+  },
+
+  "packageRules": [
+    {
+      "description": "Disable all non-security updates",
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "enabled": false
+    },
+    {
+      "description": "Critical severity security updates",
+      "matchUpdateTypes": ["security"],
+      "addLabels": ["security", "critical"],
+      "prTitle": "Critical Vulnerability: Update {{depName}} to {{newValue}} [security]"
+    },
+    {
+      "description": "High severity security updates",
+      "matchUpdateTypes": ["security"],
+      "addLabels": ["security", "high"],
+      "prTitle": "High Vulnerability: Update {{depName}} to {{newValue}} [security]"
+    },
+    {
+      "description": "Medium severity security updates",
+      "matchUpdateTypes": ["security"],
+      "addLabels": ["security", "medium"],
+      "prTitle": "Medium Vulnerability: Update {{depName}} to {{newValue}} [security]"
+    },
+    {
+      "description": "Low severity security updates",
+      "matchUpdateTypes": ["security"],
+      "addLabels": ["security", "low"],
+      "prTitle": "Low Vulnerability: Update {{depName}} to {{newValue}} [security]"
+    }
+  ]
+}
