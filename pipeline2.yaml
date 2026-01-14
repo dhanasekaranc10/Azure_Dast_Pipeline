@@ -1,0 +1,67 @@
+trigger: none
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- group: RENOVATE_TOKEN
+- name: RENOVATE_PLATFORM
+  value: azure
+
+stages:
+
+# ----------------------------
+# Stage 1 – Run Renovate
+# ----------------------------
+- stage: RunRenovate
+  displayName: "Run Renovate Bot"
+  jobs:
+  - job: Renovate
+    steps:
+    - bash: |
+        docker run --rm \
+          -e LOG_LEVEL=debug \
+          -e RENOVATE_PLATFORM=${RENOVATE_PLATFORM} \
+          -e RENOVATE_ENDPOINT=$(System.CollectionUri) \
+          -e RENOVATE_TOKEN=$(PAT) \
+          -e RENOVATE_CONFIG_FILE=/config/renovate.json \
+          -v "$(System.DefaultWorkingDirectory)/renovate.json:/config/renovate.json" \
+          -v "$(System.DefaultWorkingDirectory)/repos.json:/config/repos.json" \
+          renovate/renovate:latest
+      displayName: "Execute Renovate"
+
+# ----------------------------
+# Stage 2 – Enforce Severity Policy
+# ----------------------------
+- stage: EnforceSeverity
+  displayName: "Enforce Vulnerability Severity Policy"
+  dependsOn: RunRenovate
+  condition: eq(variables['Build.Reason'], 'PullRequest')
+  jobs:
+  - job: SeverityGate
+    steps:
+    - bash: |
+        echo "Checking PR severity..."
+
+        BODY="$(System.PullRequest.PullRequestBody)"
+
+        echo "$BODY"
+
+        if echo "$BODY" | grep -qi "Severity: Low\|Severity: Medium"; then
+          echo "Closing LOW/MEDIUM vulnerability PR"
+
+          az repos pr update \
+            --id $(System.PullRequest.PullRequestId) \
+            --status abandoned \
+            --organization $(System.CollectionUri) \
+            --project $(System.TeamProject)
+
+        else
+          echo "High / Critical vulnerability – keeping PR open"
+        fi
+      displayName: "Auto-close Low/Medium Vulnerability PRs"
